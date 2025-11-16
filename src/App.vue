@@ -78,6 +78,15 @@ export default {
   },
   created() {
     if (this.isElectron) ipcRenderer(this);
+    // Initialize macOS status bar lyric when running on macOS Electron
+    if (process.env.IS_ELECTRON === true && process.platform === 'darwin') {
+      try {
+        const { initMacStatusbarLyric } = require('@/utils/macStatusBarLyric');
+        initMacStatusbarLyric();
+      } catch (e) {
+        // ignore if not available
+      }
+    }
     window.addEventListener('keydown', this.handleKeydown);
     this.fetchData();
   },

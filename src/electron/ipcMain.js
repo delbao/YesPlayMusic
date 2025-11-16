@@ -322,5 +322,13 @@ export function initIpcMain(win, store, trayEventEmitter) {
     ipcMain.on('updateTrayIcon', () => {
       trayEventEmitter.emit('updateIcon');
     });
+    // macOS dynamic tray image from renderer
+    ipcMain.on('updateTray', (_, payload) => {
+      trayEventEmitter.emit('updateTrayImage', payload);
+    });
+    // show main window on request
+    ipcMain.on('windowShow', () => {
+      win.show();
+    });
   }
 }

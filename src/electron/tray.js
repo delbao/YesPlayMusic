@@ -1,7 +1,7 @@
 /* global __static */
 import path from 'path';
 import { app, nativeImage, Tray, Menu, nativeTheme } from 'electron';
-import { isLinux } from '@/utils/platform';
+import { isLinux, isMac } from '@/utils/platform';
 
 function createMenuTemplate(win) {
   return [
@@ -242,6 +242,40 @@ class YPMTrayWindowsImpl {
   }
 }
 
+class YPMTrayMacImpl {
+  constructor(tray, win, emitter, store) {
+    this.tray = tray;
+    this.win = win;
+    this.emitter = emitter;
+    this.store = store;
+    this._bindEvents();
+  }
+
+  _bindEvents() {
+    // Forward clicks to show main window (simple behavior)
+    this.tray.on('click', () => {
+      this.win.show();
+    });
+
+    // Update tooltip if requested
+    this.emitter.on('updateTooltip', title => this.tray.setToolTip(title));
+
+    // Accept dynamic tray image from renderer
+    this.emitter.on('updateTrayImage', ({ img, width, height }) => {
+      try {
+        const image = nativeImage.createFromDataURL(img).resize({
+          width: Math.max(1, Math.floor(width)),
+          height: Math.max(1, Math.floor(height)),
+        });
+        image.setTemplateImage(true);
+        this.tray.setImage(image);
+      } catch (e) {
+        // no-op
+      }
+    });
+  }
+}
+
 export function createTray(win, eventEmitter, store) {
   let trayIconSetting = store.get('settings.trayIconTheme') || 'auto';
   let iconTheme;
@@ -261,7 +295,11 @@ export function createTray(win, eventEmitter, store) {
   let tray = new Tray(icon);
   tray.setToolTip('YesPlayMusic');
 
-  return isLinux
-    ? new YPMTrayLinuxImpl(tray, win, eventEmitter, store)
-    : new YPMTrayWindowsImpl(tray, win, eventEmitter, store);
+  if (isLinux) {
+    return new YPMTrayLinuxImpl(tray, win, eventEmitter, store);
+  }
+  if (isMac) {
+    return new YPMTrayMacImpl(tray, win, eventEmitter, store);
+  }
+  return new YPMTrayWindowsImpl(tray, win, eventEmitter, store);
 }
